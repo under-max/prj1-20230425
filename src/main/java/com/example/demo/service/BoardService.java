@@ -1,17 +1,33 @@
 package com.example.demo.service;
 
+import java.io.*;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.*;
+import org.springframework.transaction.annotation.*;
+import org.springframework.web.multipart.*;
 
 import com.example.demo.domain.*;
 import com.example.demo.mapper.*;
 
+import software.amazon.awssdk.services.s3.*;
+
 // 큰서비스라면 인터페이스로 나눔
 // Component여도 상관 없지만 Service안에 Component 포함되어있으므로 명시적으로 @Service 기입
 @Service
+@Transactional(rollbackFor = Exception.class) //모든 exception에 rollback 적용
 public class BoardService {
+	
+	//삭제 s3.delete
+	//생성 s3.putobject
+	@Autowired
+	private S3Client s3;
+	
+	@Value("${aws.s3.bucketName}")
+	private String bucketName;
+	
+	
 	//mapper 한테 일 시키므로 mapper 주입
 	@Autowired
 	private BoardMapper mapper;
@@ -26,21 +42,109 @@ public class BoardService {
 		return board;
 	}
 
-	public boolean modify(Board board) { // 원래 void지만 boolean 은 지정자 마음 
+	public boolean modify(Board board, List<String> removeFileNames, MultipartFile[] addFiles) throws Exception{ // 원래 void지만 boolean 은 지정자 마음 
+		
+		
+		
+		// FileName 테이블 삭제
+		if(removeFileNames != null && !removeFileNames.isEmpty()) {
+			for(String fileName : removeFileNames) {
+				
+				// 하드디스크에서 삭제 
+				String path = "C:\\Study\\upload\\" + board.getId() + "\\" + fileName;
+				File file = new File(path);
+				if(file.exists()) {
+					file.delete();
+				}
+				
+				// 테이블에서 삭제
+				mapper.deleteFileNameByBoardIdAndFileName(board.getId(), fileName);
+			}
+		}
+		
+		// 그림파일 추가
+		for(MultipartFile newFile : addFiles) {
+			if(newFile.getSize() > 0) {
+				//테이블에 파일명 추가 
+				mapper.insertFileName(board.getId(), newFile.getOriginalFilename());
+				
+				String fileName = newFile.getOriginalFilename();
+				String folder = "C:\\Study\\upload\\" + board.getId();
+				String path = folder + "\\" + fileName;
+				
+				//디렉토리 없으면 생성 
+				File dir = new File(folder);
+				if(!dir.exists()) {
+					dir.mkdir();
+				}
+				
+				// 파일을 하드디스크에 저장
+				File file = new File(path);
+				newFile.transferTo(file);
+			}
+		}
+		
+		// 게시물(board) 테이블 수정
 		int cnt = mapper.update(board);
 		
 		return cnt == 1;
 	}
 
 	public boolean remove(Integer id) {
+		// 파일명 조회 
+		List<String> fileNames = mapper.selectFileNameByBoardId(id);
+		System.out.println(fileNames);
+		// 파일명 조회 확인됨 [main.jpa, aaa.jpa], 폴더명은 들어온 id로 확인 가능 
+		
+		
+		// filename 테이블의 데이터 지우기 
+		mapper.deleteFileNameByBoardId(id);
+		
+		
+		// 하드디스크의 파일 지우기 
+		for(String fileName: fileNames) {
+			String path = "C:\\Study\\upload\\" + id + "\\" + fileName;
+			File file = new File(path);
+			if(file.exists()) {
+				file.delete();
+			}
+		}
+		// 게시물 테이블의 데이터 지우기
 		int cnt = mapper.deleteById(id);
 		return cnt == 1;
 	}
 
-	public boolean createProcess(Board board) {
+	
+	public boolean createProcess(Board board, MultipartFile[] files) throws Exception {
 		
 		int cnt = mapper.create(board);
+		
+				
+		System.out.println(board.getId());
+		for(MultipartFile file : files) {
+			if(file.getSize() > 0) {
+				System.out.println(file.getOriginalFilename());
+				System.out.println(file.getSize());
+				
+				//폴더 만들기 
+				String folder = "C:\\study\\upload\\" + board.getId();
+				File targetFolder = new File(folder);
+				if(!targetFolder.exists()) {
+					targetFolder.mkdirs();
+				}				
+				//파일 저장(파일시스템->hd저장)끝나면 aws로
+				String path = "C:\\study\\upload\\" + board.getId() + "\\" + file.getOriginalFilename();
+				File target = new File(path);
+				file.transferTo(target);
+				// db에 관련 정보 저장
+				mapper.insertFileName(board.getId(), file.getOriginalFilename());				
+			}
+			// 게시물 insert
+			
+		}
 		return cnt == 1;
+		
+		
 	}
 
 	public Map<String, Object> listBoard(Integer page, String search, String type) { //pagenation용 SELECT

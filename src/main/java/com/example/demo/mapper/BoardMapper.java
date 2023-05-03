@@ -19,11 +19,18 @@ public interface BoardMapper {
 
 	
 	@Select("""
-			SELECT *
-			FROM Board
-			WHERE id = #{id}			
+			SELECT 
+				b.id,
+				b.title,
+				b.body,
+				b.inserted,
+				b.writer,
+				f.fileName
+			FROM Board b LEFT JOIN FileName f ON b.id = f.boardId
+			WHERE b.id = #{id}			
 			""")
-	public Board selectById(Integer id);
+	@ResultMap("boardResultMap")
+	Board selectById(Integer id);
 
 
 	@Update("""
@@ -49,7 +56,7 @@ public interface BoardMapper {
 			INSERT INTO Board (title, writer, body)
 			VALUES (#{title}, #{writer}, #{body})			
 			""")
-	@Options(useGeneratedKeys = true, keyColumn = "id")//자동증가하는 키 확인
+	@Options(useGeneratedKeys = true, keyProperty = "id")//자동증가하는 키 확인	
 	public int create(Board board);
 
 
@@ -57,11 +64,14 @@ public interface BoardMapper {
 			<script>
 			<bind name="pattern" value="'%' + search + '%'" />
 			SELECT
-				id,
-				title,
-				writer,
-				inserted
-			FROM Board
+				b.id,
+				b.title,
+				b.writer,
+				b.inserted,
+				COUNT(f.id) fileCount
+			FROM Board b LEFT JOIN FileName f
+			ON b.id = f.boardId
+			
 			<where>
 				<if test="(type eq 'all') or (type eq 'title')">
 				   title  LIKE #{pattern}
@@ -73,10 +83,11 @@ public interface BoardMapper {
 				OR writer LIKE #{pattern}
 				</if>
 			</where>
-			ORDER BY id DESC
+			GROUP BY b.id
+			ORDER BY b.id DESC
 			LIMIT #{startIndex}, #{rowPerPage}
 			</script>
-			""")
+			""")	
 	List<Board> selectAllPaging(Integer startIndex, Integer rowPerPage, String search, String type);
 
 	
@@ -100,6 +111,37 @@ public interface BoardMapper {
 			</script>
 			""")
 	Integer countAll(String search, String type);
+
+	
+	@Insert("""
+			INSERT INTO FileName (boardId, fileName)
+			VALUES (#{boardId}, #{filename})
+			""")
+	public void insertFileName(Integer boardId, String filename);
+
+	//FileName 에서 해당하는 filename list 추출
+	@Select("""
+			SELECT f.FileName FROM Board b JOIN FileName f
+			ON b.id = f.boardId 
+			WHERE b.id = #{id}
+			""")
+	public List<String> selectFileNameByBoardId(Integer id);
+
+	
+	// 이미지 foreign key 삭제용
+	@Delete("""
+			DELETE FROM FileName
+			WHERE boardId = #{id} 
+			""")
+	public void deleteFileNameByBoardId(Integer id);
+
+	//수정에서 삭제 
+	@Delete("""
+			DELETE FROM FileName
+			WHERE boardId = #{boardId}
+			AND fileName = #{fileName}
+			""")
+	public void deleteFileNameByBoardIdAndFileName(Integer boardId, String fileName);
 	
 	
 	

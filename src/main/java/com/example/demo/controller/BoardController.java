@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.*;
 import org.springframework.ui.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.*;
 import org.springframework.web.servlet.mvc.support.*;
 
 import com.example.demo.domain.*;
@@ -36,6 +37,7 @@ public class BoardController {
 		Map<String, Object> result = service.listBoard(page, search, type); // 페이지 처리
 		
 		// 3. add attribute
+		System.out.println(result.get("boardList"));
 //		model.addAttribute("boardList", result.get("boardList"));
 //		model.addAttribute("pageInfo", result.get("pageInfo"));		
 		model.addAllAttributes(result);
@@ -49,7 +51,7 @@ public class BoardController {
 		// 2.business logic
 		// -> service 몫
 		Board board = service.getBoard(id);
-		System.out.println(board);
+		System.out.println(board);		
 		// 3. add Attribute
 		model.addAttribute("board", board);
 
@@ -72,9 +74,11 @@ public class BoardController {
 
 //	@RequestMapping(value="/modify/{id}", method = RequestMethod.POST)
 	@PostMapping("/modify/{id}") // 개별수정
-	public String modifyProcess(Board board, RedirectAttributes rttr) { // form submit으로 들어온거 받음
-
-		boolean ok = service.modify(board);
+	public String modifyProcess(@RequestParam(value="files", required = false) MultipartFile[] addFiles,
+			@RequestParam(value = "removeFiles", required = false) List<String> removeFileNames,
+			Board board, RedirectAttributes rttr) throws Exception{ // form submit으로 들어온거 받음
+		
+		boolean ok = service.modify(board, removeFileNames, addFiles);
 
 		if (ok) {
 			// 해당 게시물 보기로 리디렉션
@@ -90,6 +94,7 @@ public class BoardController {
 
 	@PostMapping("remove") // 지우기
 	public String remove(Integer id, RedirectAttributes rttr) {
+		
 		boolean ok = service.remove(id);
 		if (ok) {
 			// query String에 추가
@@ -112,11 +117,11 @@ public class BoardController {
 	}
 
 	@PostMapping("add")
-	public String addProcess(Board board, RedirectAttributes rttr) {
+	public String addProcess(@RequestParam("files") MultipartFile[] files, Board board, RedirectAttributes rttr) throws Exception{
 		// 새 게시물 db에 추가 service로 보내야지
-		System.out.println(board);
-
-		boolean ok = service.createProcess(board);
+		
+		System.out.println(board.getId());
+		boolean ok = service.createProcess(board, files);
 		if (ok) {
 //			rttr.addAttribute("createSuccess", "success");
 			rttr.addFlashAttribute("message", board.getId() + "번 게시물이 등록되었습니다.");
