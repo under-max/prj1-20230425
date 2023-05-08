@@ -31,7 +31,6 @@
 					<div class="mb-3">
 						<c:forEach items="${board.fileName }" var="fileName">
 							<%--localhost:8080/image/게시물 번호/fileName --%>
-							<c:set var="bucketUrl" value="https://bucket0503-1000011011001.s3.ap-northeast-2.amazonaws.com/board" />
 							<img src="${bucketUrl}/${board.id}/${fileName}"  class="img-fluid" alt="...">
 						</c:forEach>
 					</div>
