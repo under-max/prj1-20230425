@@ -5,6 +5,8 @@ import java.util.*;
 import javax.swing.border.*;
 
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.security.access.prepost.*;
+import org.springframework.security.core.*;
 import org.springframework.stereotype.*;
 import org.springframework.ui.*;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +62,7 @@ public class BoardController {
 	}
 
 	@GetMapping("/modify/{id}") // 개별수정 조회
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #id)") // 나중에 이 게시물을 작성한 사람이 본인인지확인하는 로직 추가 
 	public String modifyForm(@PathVariable("id") Integer id, Model model) {
 		// 1.request Param
 
@@ -74,6 +77,8 @@ public class BoardController {
 
 //	@RequestMapping(value="/modify/{id}", method = RequestMethod.POST)
 	@PostMapping("/modify/{id}") // 개별수정
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #board.id)")//로그인 되어있어야 하고
+	//수정하려는 게시물 id : board.getid
 	public String modifyProcess(@RequestParam(value="files", required = false) MultipartFile[] addFiles,
 			@RequestParam(value = "removeFiles", required = false) List<String> removeFileNames,
 			Board board, RedirectAttributes rttr) throws Exception{ // form submit으로 들어온거 받음
@@ -93,6 +98,7 @@ public class BoardController {
 	}
 
 	@PostMapping("remove") // 지우기
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #id)") //게시물 번호로 게시물 조회해서 로그인한 사람의 아이디와 같은지 확인하여 처리
 	public String remove(Integer id, RedirectAttributes rttr) {
 		
 		boolean ok = service.remove(id);
@@ -110,6 +116,7 @@ public class BoardController {
 	// 이하 게시물 삭제
 	// Insert 기능 마음대로 추가
 	@GetMapping("add")
+	@PreAuthorize("isAuthenticated()") //로그인한 사람만 작성 가능
 	public String addForm() {
 		// 게시물 작성 form view로 포워드
 
@@ -117,10 +124,12 @@ public class BoardController {
 	}
 
 	@PostMapping("add")
-	public String addProcess(@RequestParam("files") MultipartFile[] files, Board board, RedirectAttributes rttr) throws Exception{
+	public String addProcess(@RequestParam("files") MultipartFile[] files, Board board, RedirectAttributes rttr,
+			Authentication authentication) throws Exception{
 		// 새 게시물 db에 추가 service로 보내야지
 		
 		System.out.println(board.getId());
+		board.setWriter(authentication.getName()); //security에서 가져온 user정보
 		boolean ok = service.createProcess(board, files);
 		if (ok) {
 //			rttr.addAttribute("createSuccess", "success");

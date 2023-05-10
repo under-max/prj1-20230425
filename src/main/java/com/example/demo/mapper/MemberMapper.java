@@ -24,9 +24,11 @@ public interface MemberMapper {
 
 	@Select("""
 			SELECT *
-			FROM Member
+			FROM Member m LEFT JOIN MemberAuthority ma
+			ON m.id = ma.memberId
 			WHERE id = #{id}
 			""")
+	@ResultMap("memberMap")
 	public Member selectById(String id);
 
 	@Delete("""
@@ -51,5 +53,6 @@ public interface MemberMapper {
 			</script>
 			""")
 	Integer update(Member member);
+	
 
 }

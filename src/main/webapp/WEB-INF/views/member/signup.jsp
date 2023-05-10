@@ -28,6 +28,22 @@
 						<label for="inputPassword" class="form-label">패스워드</label>
 						<input id="inputPassword" type="text" class="form-control" name="password" />
 					</div>
+					
+					<div class="mb-3">
+						<label for="inputPasswordCheck" class="form-label">패스워드확인</label>
+						<input id="inputPasswordCheck" type="text" class="form-control"/>
+					</div>
+					
+					<div id="passwordSuccessText" class="d-none form-text text-primary">
+					<i class="fa-solid fa-check"></i>
+						패스워드가 일치합니다.
+					</div>
+					
+					<div id="passwordFailText" class="d-none form-text text-danger">
+					<i class="fa-solid fa-triangle-exclamation"></i>
+						패스워드가 일치하지 않습니다
+					</div>
+					
 					<div class="mb-3">
 						<label for="inputNickName" class="form-label">닉네임</label>
 						<input id="inputNickName" type="text" class="form-control" name="nickName" value="${member.nickName }"/>
@@ -37,12 +53,44 @@
 						<input id="inputEmail" type="text" class="form-control" name="email" value="${member.email }"/>
 					</div>
 					<div class="mb-3">
-						<input type="submit" class="btn btn-primary" value="가입" />
+						<input id="signupSubmit" type="submit" class="btn btn-primary disabled" value="가입" />
 					</div>
 				</form>
 			</div>
 		</div>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js" integrity="sha512-pumBsjNRGGqkPzKHndZMaAG+bir374sORyzM3uulLV14lN5LyykqNk8eEeUlUkB3U0M4FApyaHraT65ihJhDpQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+		<script>
+	console.log("hello js");
+		
+		// 패스워드, 패스워드체크 인풋에 키업 이벤트 발생하면
+		$("#inputPassword, #inputPasswordCheck").keyup(function() {
+			// 패스워드에 입력한 값
+			const pw1 = $("#inputPassword").val();
+			// 패스워드확인에 입력한 값이
+			const pw2 = $("#inputPasswordCheck").val();
+			
+			if (pw1 === pw2) {
+				// 같으면
+				// submit 버튼 활성화
+				$("#signupSubmit").removeClass("disabled");
+				// 패스워드가 같다는 메세지 출력
+				$("#passwordSuccessText").removeClass("d-none");
+				$("#passwordFailText").addClass("d-none");
+				
+			} else {
+				// 그렇지 않으면
+				// submit 버튼 비활성화
+				$("#signupSubmit").addClass("disabled");
+				// 패스워드가 다르다는 메세지 출력
+				$("#passwordFailText").removeClass("d-none");
+				$("#passwordSuccessText").addClass("d-none");
+				
+			}
+			
+			
+		})
+		
+		</script>
 </body>
 </html>

@@ -171,4 +171,13 @@ public class BoardService {
 
 	}
 
+	public void removeByWriter(String writer) {
+		List<Integer> idList = mapper.selectIdByWriter(writer);
+		
+		for(Integer id : idList){
+			remove(id);
+		}
+		
+	}
+
 }
