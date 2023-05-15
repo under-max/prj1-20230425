@@ -3,6 +3,7 @@ package com.example.demo.service;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.security.core.*;
 import org.springframework.security.crypto.password.*;
 import org.springframework.stereotype.*;
 import org.springframework.transaction.annotation.*;
@@ -77,6 +78,34 @@ public class MemberService {
 		}
 
 		return cnt == 1;
+	}
+
+	public Map<String, Object> checkId(String id) {
+		Member member = mapper.selectById(id);
+		return Map.of("available", member == null);
+	}
+
+	//닉네임 체크용
+	public Map<String, Object> checkNickName(String nickName, Authentication authentication) {
+		Member member = mapper.selectByNickName(nickName);
+		
+		if(authentication.getName() != null) {
+			Member oldMember = mapper.selectById(authentication.getName());
+			return Map.of("available", member == null, "originName", oldMember.getNickName());
+		} else {
+			return Map.of("available", member == null);
+		}		
+	}
+
+	public Map<String, Object> checkEmail(String email, Authentication authentication) {
+			Member member = mapper.selectByEmail(email);
+		if(authentication.getName() != null) {
+			Member oldMember = mapper.selectById(authentication.getName());
+			return Map.of("available", member == null, "originEmail", oldMember.getEmail());
+		} else {
+			return Map.of("available", member == null);
+		}
+		
 	}
 
 

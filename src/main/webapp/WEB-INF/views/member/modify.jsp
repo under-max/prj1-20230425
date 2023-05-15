@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-<my:navBar></my:navBar>
+	<my:navBar></my:navBar>
 
 	<my:alert></my:alert>
 
@@ -23,40 +23,75 @@
 				<form id="modifyForm" action="/member/modify" method="post">
 					<div class="mb-3">
 						<label class="form-label" for="inputId"> 아이디 </label>
+
 						<input id="inputId" class="form-control" type="text" name="id" value="${member.id }" readonly />
 					</div>
-					
-					
+
+
+
 					<div class="mb-3">
 						<label class="form-label" for="inputPassword"> 패스워드 </label>
 						<input id="inputPassword" class="form-control" type="password" name="password" value="" />
 					</div>
-					
+
 					<div class="mb-3">
 						<label class="form-label" for="inputPasswordCheck"> 패스워드확인 </label>
 						<input id="inputPasswordCheck" class="form-control" type="password" value="" />
 					</div>
-										
+
 					<div id="passwordSuccessText" class="d-none form-text text-primary">
-					<i class="fa-solid fa-check"></i>
+						<i class="fa-solid fa-check"></i>
 						패스워드가 일치합니다.
 					</div>
-					
+
 					<div id="passwordFailText" class="d-none form-text text-danger">
-					<i class="fa-solid fa-triangle-exclamation"></i>
+						<i class="fa-solid fa-triangle-exclamation"></i>
 						패스워드가 일치하지 않습니다
 					</div>
-					
+
 					<div class="mb-3">
 						<label class="form-label" for="inputNickName"> 별명 </label>
-						<input id="inputNickName" class="form-control" type="text" name="nickName" value="${member.nickName }" />
+						<div class="input-group">
+							<input id="inputNickName" class="form-control" type="text" name="nickName" value="${member.nickName }" />
+							<button type="button" id="checkNickNameBtn" class="btn btn-outline-secondary">중복 확인</button>
+						</div>
+
+						<div class="d-none form-text text-primary" id="availableId">
+							<i class="fa-solid fa-check"></i>
+							수정 가능한 별명입니다.
+						</div>
+						<div class="d-none form-text text-danger" id="notAvailableId">
+							<i class="fa-solid fa-triangle-exclamation"></i>
+							중복된 별명입니다.
+						</div>
+
 					</div>
+
+
+
+
+
 					<div class="mb-3">
 						<label class="form-label" for="inputEmail"> 이메일 </label>
-						<input id="inputEmail" class="form-control" type="email" name="email" value="${member.email }" />
+						<div class="input-group">
+							<input id="inputEmail" class="form-control" type="email" name="email" value="${member.email }" />
+							<button type="button" id="checkEmailBtn" class="btn btn-outline-secondary">중복확인</button>
+						</div>
+
+
+						<div class="d-none form-text text-primary" id="availableEmail">
+							<i class="fa-solid fa-check"></i>
+							수정 가능한 이메일입니다.
+						</div>
+						<div class="d-none form-text text-danger" id="notAvailableEmail">
+							<i class="fa-solid fa-triangle-exclamation"></i>
+							중복된 이메일입니다.
+						</div>
+
 					</div>
 
 					<button id="signupSubmit" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal" class="btn btn-primary disabled">수정</button>
+
 				</form>
 
 			</div>
@@ -86,7 +121,7 @@
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js" integrity="sha512-pumBsjNRGGqkPzKHndZMaAG+bir374sORyzM3uulLV14lN5LyykqNk8eEeUlUkB3U0M4FApyaHraT65ihJhDpQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script src="/js/member/modify.js"></script>
-	
+
 
 </body>
 </html>

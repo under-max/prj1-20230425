@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.security.core.*;
 import org.springframework.stereotype.*;
 import org.springframework.transaction.annotation.*;
 import org.springframework.web.multipart.*;
@@ -25,6 +26,9 @@ public class BoardService {
 	// 생성 s3.putObject
 	@Autowired
 	private S3Client s3;
+	
+	@Autowired
+	private BoardLikeMapper likeMapper;
 
 	@Value("${aws.s3.bucketName}")
 	private String bucketName;
@@ -178,6 +182,23 @@ public class BoardService {
 			remove(id);
 		}
 		
+	}
+
+	public Map<String, Object> like(Like like, Authentication authentication) {
+		Map<String, Object> result = new HashMap<>();
+		
+		result.put("like", false);
+		
+		like.setMemberId(authentication.getName());
+		Integer deleteCnt = likeMapper.delete(like);
+		System.out.println("여긴 service : " + deleteCnt);
+		System.out.println(like);
+		if (deleteCnt != 1) {
+			Integer insertCnt = likeMapper.insert(like);
+			result.put("like", true);
+		}
+		
+		return result;
 	}
 
 }

@@ -143,4 +143,16 @@ public class BoardController {
 
 	}
 
+	
+	@PostMapping("like")
+	@ResponseBody
+	public Map<String, Object> like(@RequestBody Like like, Authentication authentication) {
+		
+		System.out.println("여긴 controller"+ like);
+		return service.like(like, authentication);
+		
+	}
+	
+	
+	
 }

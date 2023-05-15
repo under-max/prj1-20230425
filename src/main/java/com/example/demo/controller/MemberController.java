@@ -21,7 +21,33 @@ public class MemberController {
 
 	@Autowired
 	private MemberService service;
-
+	
+	@GetMapping("checkId/{id}")
+	@ResponseBody
+	public Map<String, Object> checkId(@PathVariable("id") String id) {
+		
+		return service.checkId(id);
+	}
+	
+	
+	@GetMapping("checkNickName/{nickName}")
+	@ResponseBody
+	public Map<String, Object> checkNickName(@PathVariable("nickName") String nickName ,Authentication authentication){
+		
+		return service.checkNickName(nickName, authentication);
+	}
+	
+	@GetMapping("checkEmail/{email}")
+	@ResponseBody
+	public Map<String, Object> checkEmail(@PathVariable("email")String email, Authentication authentication){
+		
+		return service.checkEmail(email, authentication);
+	}
+	
+	
+	
+	
+	
 	@GetMapping("signup")
 	@PreAuthorize("isAnonymous()") //로그인안한 사람만 접근할수 있도록 처리
 	public void signupFrom() {
@@ -126,5 +152,8 @@ public class MemberController {
 	public void loginForm() {
 		//로그인 페이지
 	}
+	
+	
+	
 	
 }
