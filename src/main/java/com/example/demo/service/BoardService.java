@@ -19,40 +19,43 @@ import software.amazon.awssdk.services.s3.model.*;
 // 큰서비스라면 인터페이스로 나눔
 // Component여도 상관 없지만 Service안에 Component 포함되어있으므로 명시적으로 @Service 기입
 @Service
-@Transactional(rollbackFor = Exception.class) // 모든 exception에 rollback 적용
+@Transactional(rollbackFor = Exception.class)
 public class BoardService {
 
-	// 삭제 s3.delete
-	// 생성 s3.putObject
 	@Autowired
 	private S3Client s3;
-	
-	@Autowired
-	private BoardLikeMapper likeMapper;
 
 	@Value("${aws.s3.bucketName}")
 	private String bucketName;
 
-	// mapper 한테 일 시키므로 mapper 주입
 	@Autowired
 	private BoardMapper mapper;
+	
+	@Autowired
+	private BoardLikeMapper likeMapper;
 
 	public List<Board> listBoard() {
-		List<Board> list = mapper.selectALL();
+		List<Board> list = mapper.selectAll();
 		return list;
 	}
 
-	public Board getBoard(Integer id) {
+	public Board getBoard(Integer id, Authentication authentication) {
 		Board board = mapper.selectById(id);
+
+		
+		// 현재 로그인한 사람이 이 게시물에 좋아요 했는지?
+		if (authentication != null) {
+			Like like = likeMapper.select(id, authentication.getName());
+			if (like != null) {
+				board.setLiked(true);
+			}
+		}
+		
 		return board;
 	}
 
-	public boolean modify(Board board, List<String> removeFileNames, MultipartFile[] addFiles) throws Exception { // 원래
-																													// void지만
-																													// boolean
-																													// 은
-																													// 지정자
-																													// 마음
+	public boolean modify(Board board, MultipartFile[] addFiles, List<String> removeFileNames) throws Exception {
+
 		// FileName 테이블 삭제
 		if (removeFileNames != null && !removeFileNames.isEmpty()) {
 			for (String fileName : removeFileNames) {
@@ -69,7 +72,6 @@ public class BoardService {
 			}
 		}
 
-		// 그림파일 추가
 		// 새 파일 추가
 		for (MultipartFile newFile : addFiles) {
 			if (newFile.getSize() > 0) {
@@ -88,97 +90,106 @@ public class BoardService {
 			}
 		}
 
-		// 게시물(board) 테이블 수정
+		// 게시물(Board) 테이블 수정
 		int cnt = mapper.update(board);
 
 		return cnt == 1;
 	}
 
 	public boolean remove(Integer id) {
-		// 파일명 조회
-		List<String> fileNames = mapper.selectFileNameByBoardId(id);
-		System.out.println(fileNames);
-		// 파일명 조회 확인됨 [main.jpa, aaa.jpa], 폴더명은 들어온 id로 확인 가능
 
-		// filename 테이블의 데이터 지우기
+		// 좋아요 테이블 지우기
+		likeMapper.deleteByBoardId(id);
+
+		// 파일명 조회
+		List<String> fileNames = mapper.selectFileNamesByBoardId(id);
+
+		// FileName 테이블의 데이터 지우기
 		mapper.deleteFileNameByBoardId(id);
 
 		// s3 bucket의 파일(객체) 지우기
 		for (String fileName : fileNames) {
 			String objectKey = "board/" + id + "/" + fileName;
-			DeleteObjectRequest dor = DeleteObjectRequest.builder().bucket(bucketName).key(objectKey).build();
+			DeleteObjectRequest dor = DeleteObjectRequest.builder()
+					.bucket(bucketName)
+					.key(objectKey)
+					.build();
 			s3.deleteObject(dor);
 		}
+		
+		
+
 		// 게시물 테이블의 데이터 지우기
 		int cnt = mapper.deleteById(id);
+
 		return cnt == 1;
 	}
 
-	public boolean createProcess(Board board, MultipartFile[] files) throws Exception {
+	public boolean addBoard(Board board, MultipartFile[] files) throws Exception {
 
-		int cnt = mapper.create(board);
+		// 게시물 insert
+		int cnt = mapper.insert(board);
 
-		System.out.println(board.getId());
 		for (MultipartFile file : files) {
 			if (file.getSize() > 0) {
 				String objectKey = "board/" + board.getId() + "/" + file.getOriginalFilename();
+				
 				PutObjectRequest por = PutObjectRequest.builder()
 						.bucket(bucketName)
-						.key(objectKey) // 폴더 + 파일명
+						.key(objectKey)
 						.acl(ObjectCannedACL.PUBLIC_READ)
 						.build();
-				RequestBody rb = RequestBody.fromInputStream(file.getInputStream(), file.getSize()); // Amazon의
-																										// RequestBody
-
+				RequestBody rb = RequestBody.fromInputStream(file.getInputStream(), file.getSize());
+				
 				s3.putObject(por, rb);
-				// db에 관련 정보 저장
+				
+				// db에 관련 정보 저장(insert)
 				mapper.insertFileName(board.getId(), file.getOriginalFilename());
 			}
-			// 게시물 insert
 		}
-		return cnt == 1;
 
+		return cnt == 1;
 	}
 
-	public Map<String, Object> listBoard(Integer page, String search, String type) { // pagenation용 SELECT
-		Integer rowPerPage = 15; // 페이지당 행의 수
-		Integer startIndex = (page - 1) * rowPerPage; // 20개 보여줄꺼면 *20 10개라면 *10
-		// 페이지네이션 필요한 정보
-		Integer numOfRecords = mapper.countAll(search, type);// 전체 레코드 갯수
+	public Map<String, Object> listBoard(Integer page, String search, String type) {
+		// 페이지당 행의 수
+		Integer rowPerPage = 15;
+
+		// 쿼리 LIMIT 절에 사용할 시작 인덱스
+		Integer startIndex = (page - 1) * rowPerPage;
+
+		// 페이지네이션이 필요한 정보
+		// 전체 레코드 수
+		Integer numOfRecords = mapper.countAll(search, type);
 		// 마지막 페이지 번호
 		Integer lastPageNumber = (numOfRecords - 1) / rowPerPage + 1;
-
-		// 페이지네이션 왼쪽 번호
+		// 페이지네이션 왼쪽번호
 		Integer leftPageNum = page - 5;
-
-		// 1보다 작을수 없음
+		// 1보다 작을 수 없음
 		leftPageNum = Math.max(leftPageNum, 1);
-		// 페이지네이션 오른쪽 번호
-		Integer rightPageNum = page + 4;
-		rightPageNum = Math.min(rightPageNum, lastPageNumber);
 
-		// 현재 페이지 확인
-//		Integer currentPageNumber = page;
-//		System.out.println(page);
-		// 빈 혹은 맵에 만들어서 토스
+		// 페이지네이션 오른쪽번호
+		Integer rightPageNum = leftPageNum + 9;
+		// 마지막페이지보다 클 수 없음
+		rightPageNum = Math.min(rightPageNum, lastPageNumber);
 
 		Map<String, Object> pageInfo = new HashMap<>();
 		pageInfo.put("rightPageNum", rightPageNum);
 		pageInfo.put("leftPageNum", leftPageNum);
 		pageInfo.put("currentPageNum", page);
-		pageInfo.put("lastPageNumber", lastPageNumber);
+		pageInfo.put("lastPageNum", lastPageNumber);
+
 		// 게시물 목록
 		List<Board> list = mapper.selectAllPaging(startIndex, rowPerPage, search, type);
-		// 게시물 목록
+
 		return Map.of("pageInfo", pageInfo,
 				"boardList", list);
-
 	}
 
 	public void removeByWriter(String writer) {
 		List<Integer> idList = mapper.selectIdByWriter(writer);
 		
-		for(Integer id : idList){
+		for (Integer id : idList) {
 			remove(id);
 		}
 		
@@ -191,14 +202,26 @@ public class BoardService {
 		
 		like.setMemberId(authentication.getName());
 		Integer deleteCnt = likeMapper.delete(like);
-		System.out.println("여긴 service : " + deleteCnt);
-		System.out.println(like);
+		
 		if (deleteCnt != 1) {
 			Integer insertCnt = likeMapper.insert(like);
 			result.put("like", true);
 		}
 		
+		Integer count = likeMapper.countByBoardId(like.getBoardId());
+		result.put("count", count);
+		
 		return result;
 	}
 
+	public Board getBoard(Integer id) {
+		// TODO Auto-generated method stub
+		return getBoard(id, null);
+	}
 }
+
+
+
+
+
+

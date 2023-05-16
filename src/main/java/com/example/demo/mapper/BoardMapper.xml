@@ -10,20 +10,10 @@
 		<result column="body" property="body" />
 		<result column="inserted" property="inserted" />
 		<result column="writer" property="writer" />
+		<result column="likeCount" property="likeCount"></result>
 		<collection property="fileName" ofType="string">
 			<result column="fileName"/>
 		</collection>
 	</resultMap>
-	
-	<resultMap type="com.example.demo.domain.Board" id="fileCounter">
-		<id column="id" property="id" />
-		<result column="title" property="title" />
-		<result column="body" property="body" />
-		<result column="inserted" property="inserted" />
-		<result column="writer" property="writer" />
-		
-		<result column="COUNT(f.id)" property="fileCount" />
-		
-		
-	</resultMap>
+
 </mapper>

@@ -5,6 +5,7 @@ import java.util.*;
 import javax.swing.border.*;
 
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.*;
 import org.springframework.security.core.*;
 import org.springframework.stereotype.*;
@@ -22,137 +23,138 @@ import com.example.demo.service.*;
 public class BoardController {
 
 	@Autowired
-	private BoardService service; // 3단레이어로 service에 일시킴
-	// 경로 : http:// localhost:8080?page=?
-	// 경로: http:// localhost:8080/list?page=?
-	// 게시물 목록
-//	@RequestMapping(value = {"/", "list"}, method= RequestMethod.GET) 이하 같은 의미
+	private BoardService service;
 
+	// 경로 : http://localhost:8080?page=3
+	// 경로 : http://localhost:8080/list?page=5
+	// 게시물 목록
+//	@RequestMapping(value = {"/", "list"}, method = RequestMethod.GET)
 	@GetMapping({ "/", "list" })
 	public String list(Model model,
 			@RequestParam(value = "page", defaultValue = "1") Integer page,
-			@RequestParam(value="search", defaultValue="") String search,
-			@RequestParam(value="type", required = false) String type) { // null all title로 들어옴 
+			@RequestParam(value = "search", defaultValue = "") String search,
+			@RequestParam(value = "type", required = false) String type) {
 		// 1. request param 수집/가공
 		// 2. business logic 처리
 		// List<Board> list = service.listBoard(); // 페이지 처리 전
 		Map<String, Object> result = service.listBoard(page, search, type); // 페이지 처리
-		
+
 		// 3. add attribute
-		System.out.println(result.get("boardList"));
 //		model.addAttribute("boardList", result.get("boardList"));
-//		model.addAttribute("pageInfo", result.get("pageInfo"));		
+//		model.addAttribute("pageInfo", result.get("pageInfo"));
 		model.addAllAttributes(result);
+
 		// 4. forward/redirect
-		return "list"; // 애는 그냥 view보내는거고 
+		return "list";
 	}
 
-	@GetMapping("/id/{id}") // 개별조회
-	public String board(@PathVariable("id") Integer id, Model model) {
-		// 1.request param
-		// 2.business logic
-		// -> service 몫
-		Board board = service.getBoard(id);
-		System.out.println(board);		
-		// 3. add Attribute
+	@GetMapping("/id/{id}")
+	public String board(
+			@PathVariable("id") Integer id,
+			Model model,
+			Authentication authentication) {
+		// 1. request param
+		// 2. business logic
+		Board board = service.getBoard(id, authentication);
+		// 3. add attribute
 		model.addAttribute("board", board);
-
-		// 4.forward/ redirect
+		// 4. forward/redirect
 		return "get";
 	}
 
-	@GetMapping("/modify/{id}") // 개별수정 조회
-	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #id)") // 나중에 이 게시물을 작성한 사람이 본인인지확인하는 로직 추가 
+	@GetMapping("/modify/{id}")
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoardWriter(authentication, #id)")
 	public String modifyForm(@PathVariable("id") Integer id, Model model) {
-		// 1.request Param
-
-		// 2.business logic
-		// 일단 조회
 		model.addAttribute("board", service.getBoard(id));
-
-		// 3 add Attribute
-
 		return "modify";
 	}
 
-//	@RequestMapping(value="/modify/{id}", method = RequestMethod.POST)
-	@PostMapping("/modify/{id}") // 개별수정
-	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #board.id)")//로그인 되어있어야 하고
-	//수정하려는 게시물 id : board.getid
-	public String modifyProcess(@RequestParam(value="files", required = false) MultipartFile[] addFiles,
+//	@RequestMapping(value = "/modify/{id}", method = RequestMethod.POST)
+	@PostMapping("/modify/{id}")
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoardWriter(authentication, #board.id)")
+	
+	// 수정하려는 게시물 id : board.id
+	public String modifyProcess(Board board,
+			@RequestParam(value = "files", required = false) MultipartFile[] addFiles,
 			@RequestParam(value = "removeFiles", required = false) List<String> removeFileNames,
-			Board board, RedirectAttributes rttr) throws Exception{ // form submit으로 들어온거 받음
+			RedirectAttributes rttr) throws Exception {
 		
-		boolean ok = service.modify(board, removeFileNames, addFiles);
+		boolean ok = service.modify(board, addFiles, removeFileNames);
 
 		if (ok) {
 			// 해당 게시물 보기로 리디렉션
-//			rttr.addAttribute("success", "success"); //쿼리스트링 붙어서 넘어감
+//			rttr.addAttribute("success", "success");
 			rttr.addFlashAttribute("message", board.getId() + "번 게시물이 수정되었습니다.");
 			return "redirect:/id/" + board.getId();
 		} else {
-			// 수정폼으로 리디랙션
-			rttr.addAttribute("fail", "fail");
+			// 수정 form 으로 리디렉션
+//			rttr.addAttribute("fail", "fail");
+			rttr.addFlashAttribute("message", board.getId() + "번 게시물이 수정되지 않았습니다.");
 			return "redirect:/modify/" + board.getId();
 		}
 	}
 
-	@PostMapping("remove") // 지우기
-	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoarderWriter(authentication, #id)") //게시물 번호로 게시물 조회해서 로그인한 사람의 아이디와 같은지 확인하여 처리
+	@PostMapping("remove")
+	@PreAuthorize("isAuthenticated() and @customSecurityChecker.checkBoardWriter(authentication, #id)")
 	public String remove(Integer id, RedirectAttributes rttr) {
-		
 		boolean ok = service.remove(id);
 		if (ok) {
-			// query String에 추가
+			// query string에 추가
 //			rttr.addAttribute("success", "remove");
-			// model에 추가되서 나감
+
+			// 모델에 추가
 			rttr.addFlashAttribute("message", id + "번 게시물이 삭제되었습니다.");
+
 			return "redirect:/list";
 		} else {
 			return "redirect:/id/" + id;
 		}
 	}
 
-	// 이하 게시물 삭제
-	// Insert 기능 마음대로 추가
 	@GetMapping("add")
-	@PreAuthorize("isAuthenticated()") //로그인한 사람만 작성 가능
-	public String addForm() {
-		// 게시물 작성 form view로 포워드
-
-		return "create";
+	@PreAuthorize("isAuthenticated()")
+	public void addForm() {
+		// 게시물 작성 form (view)로 포워드
 	}
 
 	@PostMapping("add")
-	public String addProcess(@RequestParam("files") MultipartFile[] files, Board board, RedirectAttributes rttr,
-			Authentication authentication) throws Exception{
-		// 새 게시물 db에 추가 service로 보내야지
-		
-		System.out.println(board.getId());
-		board.setWriter(authentication.getName()); //security에서 가져온 user정보
-		boolean ok = service.createProcess(board, files);
+	@PreAuthorize("isAuthenticated()")
+	public String addProcess(
+			@RequestParam("files") MultipartFile[] files,
+			Board board, RedirectAttributes rttr,
+			Authentication authentication) throws Exception {
+		// 새 게시물 db에 추가
+		// 1.
+		// 2.
+		board.setWriter(authentication.getName());
+		boolean ok = service.addBoard(board, files);
+		// 3.
+		// 4.
 		if (ok) {
-//			rttr.addAttribute("createSuccess", "success");
 			rttr.addFlashAttribute("message", board.getId() + "번 게시물이 등록되었습니다.");
-			return "redirect:/list";
+			return "redirect:/id/" + board.getId();
 		} else {
-//			rttr.addAttribute("createSuccess", board);//실패하면 썻던거 다시 받아 쓰렴
-			rttr.addFlashAttribute("message", board.getId() + "번 등록 중 실패 되었습니다.");
+			rttr.addFlashAttribute("message", "게시물 등록 중 문제가 발생하였습니다.");
+			rttr.addFlashAttribute("board", board);
 			return "redirect:/add";
 		}
-
 	}
-
 	
-	@PostMapping("like")
+	@PostMapping("/like")
 	@ResponseBody
-	public Map<String, Object> like(@RequestBody Like like, Authentication authentication) {
+	public ResponseEntity<Map<String, Object>> like(
+			@RequestBody Like like,
+			Authentication authentication) {
 		
-		System.out.println("여긴 controller"+ like);
-		return service.like(like, authentication);
-		
+		if (authentication == null) {
+			return ResponseEntity
+					.status(403)
+					.body(Map.of("message", "로그인 후 좋아요 클릭 해주세요."));
+		} else {
+			
+			return ResponseEntity
+					.ok()
+					.body(service.like(like, authentication));
+		}
 	}
-	
-	
-	
 }

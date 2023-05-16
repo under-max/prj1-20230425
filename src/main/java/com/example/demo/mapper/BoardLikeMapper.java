@@ -19,4 +19,34 @@ public interface BoardLikeMapper {
 			  AND memberId = #{memberId} 
 			""")
 	Integer delete(Like like);
+
+	
+	@Select("""
+			SELECT COUNT(*) FROM BoardLike
+			WHERE boardId = #{boardId}
+			""")
+	Integer countByBoardId(Integer boardId);
+
+	@Select("""
+			SELECT * FROM BoardLike
+			WHERE BoardId = #{boardId}
+			AND memberId = #{memberId}
+			""")
+	Like select(Integer boardId, String memberId);
+
+	
+	// ##############
+
+	@Delete("""
+			DELETE FROM BoardLike
+			WHERE boardId = #{boardId}
+			""")
+	void deleteByBoardId(Integer memberId);
+
+	@Delete("""
+			DELETE FROM BoardLike
+			WHERE memberId = #{memberId}
+			""")
+	void deleteByMemberId(String id);
+	
 }
